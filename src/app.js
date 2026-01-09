@@ -3,7 +3,10 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
-app.use("/stats", require("./routes/stats.routes"));
-
-module.exports = app;
+module.exports = (bot) => {
+    app.use("/upload", require("./routes/upload.routes")(bot));
+    app.use("/stats", require("./routes/stats.routes"));
+    return app;
+};
