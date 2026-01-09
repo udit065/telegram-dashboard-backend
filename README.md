@@ -20,3 +20,8 @@ The backend initializes Socket.IO first, then injects it into the Telegram bot f
 The dashboard provides a local preview layer for broadcast messages. Media previews are generated using object URLs for uploaded files and direct rendering for URLs, while actual delivery is handled separately via Socket.IO or REST uploads.
 
 --------------------
+One-line explanation (interview)
+
+“I implemented a capped message history by automatically deleting the oldest messages once the limit exceeds 500, ensuring constant storage usage
+
+--------------

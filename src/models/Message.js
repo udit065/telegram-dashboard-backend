@@ -1,7 +1,15 @@
 const mongoose = require("mongoose");
 
-module.exports = mongoose.model("Message", {
+const MessageSchema = new mongoose.Schema({
     user: String,
     text: String,
-    time: { type: Date, default: Date.now }
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
 });
+
+// ⚠️ Important for free tier
+MessageSchema.index({ createdAt: -1 });
+
+module.exports = mongoose.model("Message", MessageSchema);

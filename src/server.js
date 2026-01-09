@@ -34,6 +34,13 @@ socketHandler(io, bot);
 (async () => {
     await connectDB();
 
+    // 🧹 Cleanup old messages (7 days)
+    // await Message.deleteMany({
+    //     createdAt: {
+    //         $lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    //     }
+    // });
+
     server.listen(process.env.PORT, () => {
         console.log(`Backend running on ${process.env.PORT}`);
     });
