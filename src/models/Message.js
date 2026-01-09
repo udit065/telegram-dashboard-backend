@@ -6,7 +6,10 @@ const MessageSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
-    }
+    },
+    replied: { type: Boolean, default: false },
+    repliedAt: Date,
+    replyText: String,
 });
 
 // ⚠️ Important for free tier
