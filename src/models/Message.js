@@ -1,16 +1,37 @@
 const mongoose = require("mongoose");
 
-const MessageSchema = new mongoose.Schema({
-    user: String,
-    text: String,
-    createdAt: {
-        type: Date,
-        default: Date.now
+const MessageSchema = new mongoose.Schema(
+    {
+        user: {
+            type: String,
+            required: true
+        },
+
+        chatId: {
+            type: String,
+            required: true
+        },
+
+        text: {
+            type: String,
+            required: true
+        },
+
+        telegramMessageId: {
+            type: Number,
+            required: true
+        },
+
+        replied: {
+            type: Boolean,
+            default: false
+        },
+
+        replyText: String,
+        repliedAt: Date
     },
-    replied: { type: Boolean, default: false },
-    repliedAt: Date,
-    replyText: String,
-});
+    { timestamps: true }
+);
 
 // ⚠️ Important for free tier
 MessageSchema.index({ createdAt: -1 });

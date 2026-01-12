@@ -6,49 +6,59 @@ module.exports = (io) => {
     const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
     bot.on("message", async (msg) => {
-        if (!msg.text) return; // Ignore non-text messages
-        const chatId = msg.chat.id;
-        const username = msg.from.username || msg.from.first_name;
-        // Save / update user
-        await User.updateOne(
-            { chatId },
-            { $set: { chatId, username } },
-            { upsert: true }
-        );
+        try {
+            // Ignore non-text messages (photos, stickers, etc.)
+            if (!msg.text) return;
 
-        const messageData = {
-            user: username,
-            text: msg.text,
-            createdAt: new Date()
-        };
+            const chatId = msg.chat.id;
+            const username = msg.from.username || msg.from.first_name || "unknown";
 
-        await Message.create(messageData);
-        // Always keep the latest 500 messages. Delete older ones for better Mongo Free-tier Cluster usage
-        const MAX_MESSAGES = 500;
+            // 1️⃣ Save or update user
+            await User.updateOne(
+                { chatId },
+                { $set: { chatId, username } },
+                { upsert: true }
+            );
 
-        // After saving message
-        const count = await Message.countDocuments();
+            // 2️⃣ Save message with REQUIRED fields
+            const savedMessage = await Message.create({
+                user: username,
+                chatId: chatId,
+                text: msg.text,
+                telegramMessageId: msg.message_id // 🔥 REQUIRED for replies
+            });
 
-        if (count > MAX_MESSAGES) {
-            const excess = count - MAX_MESSAGES;
+            // 3️⃣ MongoDB free-tier optimization (keep only latest 500 messages)
+            const MAX_MESSAGES = 500;
+            const count = await Message.countDocuments();
 
-            const oldMessages = await Message.find()
-                .sort({ createdAt: 1 }) // oldest first
-                .limit(excess)
-                .select("_id");
+            if (count > MAX_MESSAGES) {
+                const excess = count - MAX_MESSAGES;
 
-            const ids = oldMessages.map(m => m._id);
+                const oldMessages = await Message.find()
+                    .sort({ createdAt: 1 }) // oldest first
+                    .limit(excess)
+                    .select("_id");
 
-            await Message.deleteMany({ _id: { $in: ids } });
+                const ids = oldMessages.map(m => m._id);
+                await Message.deleteMany({ _id: { $in: ids } });
+            }
+
+            // 4️⃣ Emit live message to dashboard (Socket.IO)
+            io.emit("newMessage", savedMessage);
+
+        } catch (err) {
+            console.error("Telegram message handler error:", err);
         }
-
-        // LIVE MESSAGE
-        io.emit("newMessage", {
-            user: username,
-            text: msg.text,
-            createdAt: new Date()
-        });
     });
 
     return bot;
 };
+
+
+// LIVE MESSAGE
+// io.emit("newMessage", {
+//     user: username,
+//     text: msg.text,
+//     createdAt: new Date()
+// });

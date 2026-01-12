@@ -1,47 +1,44 @@
 const express = require("express");
-const User = require("../models/User");
 const Message = require("../models/Message");
 
-module.exports = (bot, io) => { // added io for Socket.IO
+module.exports = (bot, io) => {
     const router = express.Router();
 
     router.post("/", async (req, res) => {
         try {
-            const { username, text, messageId } = req.body;
+            const { messageId, text } = req.body;
 
-            if (!username || !text || !messageId) {
+            if (!messageId || !text) {
                 return res.status(400).json({ error: "Missing data" });
             }
 
-            // 1️⃣ Find user
-            const user = await User.findOne({ username });
-            if (!user) {
-                return res.status(404).json({ error: "User not found" });
+            const message = await Message.findById(messageId);
+            if (!message) {
+                return res.status(404).json({ error: "Message not found" });
             }
 
-            // 2️⃣ Send reply to Telegram (as a reply to original message)
-            await bot.sendMessage(user.chatId, text, {
-                reply_to_message_id: messageId
+            // 1️⃣ Send reply to Telegram
+            await bot.sendMessage(message.chatId, text, {
+                reply_to_message_id: message.telegramMessageId
             });
 
-            // 3️⃣ Mark message as replied in DB
-            const updatedMessage = await Message.findByIdAndUpdate(
-                messageId,
-                {
-                    replied: true,
-                    replyText: text,
-                    repliedAt: new Date()
-                },
-                { new: true }
-            );
+            // 2️⃣ Update DB
+            message.replied = true;
+            message.replyText = text;
+            message.repliedAt = new Date();
+            await message.save();
 
-            // 4️⃣ Notify dashboard via Socket.IO
-            io.emit("messageReplied", updatedMessage);
+            // 3️⃣ Emit socket SAFELY
+            if (io) {
+                io.emit("messageReplied", message);
+            }
 
-            res.json({ success: true, message: updatedMessage });
+            // 4️⃣ ALWAYS return success
+            return res.status(200).json({ success: true, message });
+
         } catch (err) {
-            console.error(err);
-            res.status(500).json({ error: "Reply failed" });
+            console.error("Reply error:", err);
+            return res.status(500).json({ error: "Reply failed" });
         }
     });
 
